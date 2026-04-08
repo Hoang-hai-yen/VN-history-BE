@@ -14,6 +14,45 @@ const mysql = require("mysql2/promise");
 
 const MIGRATIONS_DIR = __dirname;
 
+/**
+ * Split SQL file content into individual statements,
+ * handling DELIMITER changes (used for triggers/procedures).
+ */
+function splitSql(content) {
+  const statements = [];
+  let delimiter = ";";
+  let current = "";
+
+  for (const line of content.split("\n")) {
+    const trimmedLine = line.trim();
+
+    // Handle DELIMITER command (MySQL CLI syntax, not real SQL)
+    const m = trimmedLine.match(/^DELIMITER\s+(\S+)\s*$/i);
+    if (m) {
+      if (current.trim()) {
+        statements.push(current.trim());
+        current = "";
+      }
+      delimiter = m[1];
+      continue;
+    }
+
+    current += line + "\n";
+
+    // Check if buffer ends with the current delimiter
+    const trimmedCurrent = current.trimEnd();
+    if (trimmedCurrent.endsWith(delimiter)) {
+      const stmt = trimmedCurrent.slice(0, trimmedCurrent.length - delimiter.length).trim();
+      if (stmt) statements.push(stmt);
+      current = "";
+    }
+  }
+
+  if (current.trim()) statements.push(current.trim());
+
+  return statements.filter(Boolean);
+}
+
 async function run() {
   const conn = await mysql.createConnection({
     host: process.env.DB_HOST || "127.0.0.1",
@@ -22,7 +61,6 @@ async function run() {
     password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "lsvn",
     charset: "utf8mb4",
-    multipleStatements: true,
   });
 
   try {
@@ -57,10 +95,14 @@ async function run() {
         continue;
       }
 
-      const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), "utf8");
-      console.log(`  run   ${file} ...`);
+      const content = fs.readFileSync(path.join(MIGRATIONS_DIR, file), "utf8");
+      const statements = splitSql(content);
+      console.log(`  run   ${file} (${statements.length} statements) ...`);
 
-      await conn.query(sql);
+      for (const stmt of statements) {
+        await conn.query(stmt);
+      }
+
       await conn.execute("INSERT INTO _migrations (name) VALUES (?)", [file]);
       console.log(`  done  ${file}`);
       ran++;
