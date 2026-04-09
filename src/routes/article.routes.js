@@ -26,6 +26,14 @@ const router = express.Router();
  *         name: is_featured
  *         schema: { type: boolean }
  *       - in: query
+ *         name: year_from
+ *         schema: { type: integer }
+ *         description: "Lọc từ năm (âm = TCN, vd: -2879)"
+ *       - in: query
+ *         name: year_to
+ *         schema: { type: integer }
+ *         description: "Lọc đến năm"
+ *       - in: query
  *         name: q
  *         schema: { type: string }
  *         description: Tìm kiếm full-text

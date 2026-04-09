@@ -24,7 +24,7 @@ async function logActivity(adminId, action, targetId, targetTitle, detail, ip) {
  */
 async function getAll(req, res, next) {
   try {
-    const { type, dynasty_id, category_id, is_featured, q, status } = req.query;
+    const { type, dynasty_id, category_id, is_featured, q, status, year_from, year_to } = req.query;
     const { page, limit, offset } = paginate(req.query.page, req.query.limit);
 
     // Public route chỉ cho phép xem published
@@ -38,6 +38,8 @@ async function getAll(req, res, next) {
     if (dynasty_id)      { conditions.push("a.dynasty_id = ?"); params.push(dynasty_id); }
     if (category_id)     { conditions.push("a.category_id = ?"); params.push(category_id); }
     if (is_featured !== undefined) { conditions.push("a.is_featured = ?"); params.push(is_featured === "true" ? 1 : 0); }
+    if (year_from)       { conditions.push("a.year_start >= ?"); params.push(parseInt(year_from)); }
+    if (year_to)         { conditions.push("a.year_start <= ?"); params.push(parseInt(year_to)); }
     if (q)               { conditions.push("MATCH(a.title, a.summary, a.content) AGAINST(? IN BOOLEAN MODE)"); params.push(`${q}*`); }
 
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
