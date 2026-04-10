@@ -50,7 +50,7 @@ async function getAll(req, res, next) {
     );
     const total = countRows[0].total;
 
-    const [rows] = await db.execute(
+    const [rows] = await db.query(
       `SELECT a.id, a.title, a.subtitle, a.slug, a.summary, a.type, a.status,
               a.year_start, a.year_end, a.year_display, a.is_featured, a.published_at,
               d.name AS dynasty_name, d.slug AS dynasty_slug,
