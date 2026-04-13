@@ -1,6 +1,6 @@
 const express = require("express");
 const ctrl = require("../controllers/article.controller");
-const { authenticate } = require("../middlewares/auth.middleware");
+const { authenticate, requireAdmin, requireSuperAdmin } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
@@ -262,7 +262,7 @@ router.patch("/admin/articles/:id/submit", authenticate, ctrl.submit);
  *       200:
  *         description: Đã xuất bản
  */
-router.patch("/admin/articles/:id/publish", authenticate, ctrl.publish);
+router.patch("/admin/articles/:id/publish", authenticate, requireAdmin, ctrl.publish);
 
 /**
  * @swagger
@@ -287,14 +287,14 @@ router.patch("/admin/articles/:id/publish", authenticate, ctrl.publish);
  *       200:
  *         description: Đã từ chối
  */
-router.patch("/admin/articles/:id/reject", authenticate, ctrl.reject);
+router.patch("/admin/articles/:id/reject", authenticate, requireAdmin, ctrl.reject);
 
 /**
  * @swagger
  * /admin/articles/{id}:
  *   delete:
  *     tags: [Articles]
- *     summary: Xoá bài viết
+ *     summary: Xoá bài viết (super_admin only — SRS Section 3.1)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -304,7 +304,67 @@ router.patch("/admin/articles/:id/reject", authenticate, ctrl.reject);
  *     responses:
  *       204:
  *         description: Đã xoá
+ *       403:
+ *         description: Chỉ super_admin mới có quyền xoá
  */
-router.delete("/admin/articles/:id", authenticate, ctrl.remove);
+router.delete("/admin/articles/:id", authenticate, requireSuperAdmin, ctrl.remove);
+
+/**
+ * @swagger
+ * /admin/articles/{id}/return:
+ *   patch:
+ *     tags: [Articles]
+ *     summary: "Trả bài về admin (pending → pending, kèm ghi chú) — super_admin only"
+ *     description: UC-A6 BR3 — Super Admin có thể trả bài chờ xuất bản về cho admin kèm ghi chú.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [return_note]
+ *             properties:
+ *               return_note: { type: string, description: Lý do trả lại }
+ *     responses:
+ *       200:
+ *         description: Đã trả bài về admin
+ */
+router.patch("/admin/articles/:id/return", authenticate, requireSuperAdmin, ctrl.returnToPending);
+
+/**
+ * @swagger
+ * /admin/articles/bulk-publish:
+ *   post:
+ *     tags: [Articles]
+ *     summary: Duyệt tất cả bài đang pending (super_admin only — UC-A6 BR2)
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *                 description: "Danh sách ID cụ thể (bỏ trống = duyệt tất cả pending)"
+ *     responses:
+ *       200:
+ *         description: Đã xuất bản hàng loạt
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 published_count: { type: integer }
+ *                 message: { type: string }
+ */
+router.post("/admin/articles/bulk-publish", authenticate, requireSuperAdmin, ctrl.bulkPublish);
 
 module.exports = router;

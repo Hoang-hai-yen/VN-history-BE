@@ -14,6 +14,24 @@ async function create(req, res, next) {
     const [articles] = await db.execute("SELECT id FROM articles WHERE id = ? AND status = 'published'", [article_id]);
     if (!articles[0]) return res.status(404).json({ message: "Bài viết không tồn tại." });
 
+    // UC9 BR4: kiểm tra duplicate trong 24 giờ (theo reporter_email hoặc IP)
+    const reporterKey = reporter_email || req.ip;
+    if (reporterKey) {
+      const [dup] = await db.execute(
+        `SELECT id FROM reports
+         WHERE article_id = ?
+           AND (reporter_email = ? OR reporter_email IS NULL)
+           AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+         LIMIT 1`,
+        [article_id, reporter_email || null]
+      );
+      if (dup[0]) {
+        return res.status(429).json({
+          message: "Bạn đã gửi báo cáo cho bài viết này trong vòng 24 giờ qua.",
+        });
+      }
+    }
+
     await db.execute(
       `INSERT INTO reports (article_id, error_type, severity, description, quoted_text, suggested_source, reporter_email)
        VALUES (?,?,?,?,?,?,?)`,
@@ -104,4 +122,28 @@ async function reject(req, res, next) {
   }
 }
 
-module.exports = { create, getAll, assign, resolve, reject };
+/**
+ * PATCH /api/admin/reports/:id/flag
+ * Cờ kiểm tra — đánh dấu cần academic review (UC-A5 BR2)
+ */
+async function flag(req, res, next) {
+  try {
+    const [rows] = await db.execute(
+      "SELECT id, status FROM reports WHERE id = ?", [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ message: "Không tìm thấy báo cáo." });
+    if (!["new", "reviewing"].includes(rows[0].status)) {
+      return res.status(400).json({ message: "Chỉ báo cáo chưa xử lý mới có thể đánh cờ." });
+    }
+
+    await db.execute(
+      "UPDATE reports SET status = 'flagged', admin_note = ? WHERE id = ?",
+      [req.body.admin_note || null, req.params.id]
+    );
+    res.json({ message: "Đã đánh cờ kiểm tra báo cáo." });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { create, getAll, assign, resolve, reject, flag };

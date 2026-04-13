@@ -207,6 +207,10 @@ async function update(req, res, next) {
     if (!["draft", "rejected"].includes(article.status)) {
       return res.status(403).json({ message: "Chỉ được sửa bài ở trạng thái draft hoặc rejected." });
     }
+    // SRS: Edit Any Post = super_admin only; admin chỉ sửa bài của mình (UC-A3 BR4)
+    if (req.admin.role === "admin" && article.created_by !== req.admin.id) {
+      return res.status(403).json({ message: "Admin chỉ có thể sửa bài viết do mình tạo." });
+    }
 
     const allowed = ["title","subtitle","slug","summary","content","quote","type",
                      "year_start","year_end","year_display","dynasty_id","category_id",
@@ -242,6 +246,10 @@ async function submit(req, res, next) {
     if (article.status !== "draft") {
       return res.status(400).json({ message: "Chỉ bài viết draft mới có thể gửi duyệt." });
     }
+    // admin chỉ submit bài của mình
+    if (req.admin.role === "admin" && article.created_by !== req.admin.id) {
+      return res.status(403).json({ message: "Admin chỉ có thể gửi duyệt bài viết do mình tạo." });
+    }
 
     await db.execute(
       "UPDATE articles SET status = 'pending', updated_by = ? WHERE id = ?",
@@ -255,6 +263,7 @@ async function submit(req, res, next) {
 
 /**
  * PATCH /api/admin/articles/:id/publish  — pending → published
+ * UC-A4 BR2: admin không được publish bài do chính mình tạo
  */
 async function publish(req, res, next) {
   try {
@@ -264,6 +273,10 @@ async function publish(req, res, next) {
     if (article.status !== "pending") {
       return res.status(400).json({ message: "Chỉ bài viết pending mới có thể duyệt đăng." });
     }
+    // admin không được tự publish bài của mình (UC-A4 BR2)
+    if (req.admin.role === "admin" && article.created_by === req.admin.id) {
+      return res.status(403).json({ message: "Admin không được duyệt xuất bản bài viết do chính mình tạo." });
+    }
 
     await db.execute(
       "UPDATE articles SET status = 'published', published_by = ?, published_at = NOW() WHERE id = ?",
@@ -272,6 +285,62 @@ async function publish(req, res, next) {
 
     await logActivity(req.admin.id, "publish_article", article.id, article.title, null, req.ip);
     res.json({ message: "Bài viết đã được xuất bản." });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/admin/articles/:id/return  — trả bài về pending (super_admin — UC-A6 BR3)
+ */
+async function returnToPending(req, res, next) {
+  try {
+    const [rows] = await db.execute("SELECT * FROM articles WHERE id = ?", [req.params.id]);
+    const article = rows[0];
+    if (!article) return res.status(404).json({ message: "Không tìm thấy bài viết." });
+    if (article.status !== "pending") {
+      return res.status(400).json({ message: "Chỉ bài đang chờ duyệt mới có thể trả về." });
+    }
+    const { return_note } = req.body;
+    if (!return_note) return res.status(400).json({ message: "Vui lòng nhập lý do trả lại (return_note)." });
+
+    await db.execute(
+      "UPDATE articles SET rejection_note = ?, updated_by = ? WHERE id = ?",
+      [return_note, req.admin.id, article.id]
+    );
+    await logActivity(req.admin.id, "return_article", article.id, article.title, return_note, req.ip);
+    res.json({ message: "Đã trả bài về cho admin kèm ghi chú." });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/admin/articles/bulk-publish  — duyệt tất cả pending (super_admin — UC-A6 BR2)
+ */
+async function bulkPublish(req, res, next) {
+  try {
+    let ids = req.body.ids;
+
+    if (!ids || !ids.length) {
+      // lấy tất cả pending
+      const [pending] = await db.execute("SELECT id FROM articles WHERE status = 'pending'");
+      ids = pending.map((r) => r.id);
+    }
+
+    if (!ids.length) return res.json({ published_count: 0, message: "Không có bài nào cần duyệt." });
+
+    for (const id of ids) {
+      const [rows] = await db.execute("SELECT id, title, status FROM articles WHERE id = ?", [id]);
+      if (!rows[0] || rows[0].status !== "pending") continue;
+      await db.execute(
+        "UPDATE articles SET status = 'published', published_by = ?, published_at = NOW() WHERE id = ?",
+        [req.admin.id, id]
+      );
+      await logActivity(req.admin.id, "publish_article", rows[0].id, rows[0].title, "bulk_publish", req.ip);
+    }
+
+    res.json({ published_count: ids.length, message: `Đã xuất bản ${ids.length} bài viết.` });
   } catch (err) {
     next(err);
   }
@@ -309,6 +378,7 @@ async function remove(req, res, next) {
   try {
     const [rows] = await db.execute("SELECT id, title FROM articles WHERE id = ?", [req.params.id]);
     if (!rows[0]) return res.status(404).json({ message: "Không tìm thấy bài viết." });
+    // Chỉ super_admin được xóa (SRS Section 3.1 — Delete Post)
 
     await db.execute("DELETE FROM articles WHERE id = ?", [req.params.id]);
     await logActivity(req.admin.id, "delete_article", rows[0].id, rows[0].title, null, req.ip);
@@ -320,11 +390,54 @@ async function remove(req, res, next) {
 
 /**
  * GET /api/admin/dashboard
+ * Thống kê + bài viết gần đây + hoạt động gần đây + báo cáo mở
  */
 async function dashboard(req, res, next) {
   try {
-    const [stats] = await db.execute("SELECT * FROM dashboard_stats");
-    res.json({ data: stats[0] });
+    const [stats, recentArticles, recentLogs, openReports] = await Promise.all([
+      db.execute("SELECT * FROM dashboard_stats"),
+      db.execute(
+        `SELECT a.id, a.title, a.slug, a.type, a.status, a.year_display,
+                a.created_at, a.published_at,
+                d.name AS dynasty_name,
+                adm.full_name AS created_by_name
+         FROM articles a
+         LEFT JOIN dynasties d   ON a.dynasty_id = d.id
+         LEFT JOIN admins    adm ON a.created_by  = adm.id
+         ORDER BY a.updated_at DESC
+         LIMIT 10`
+      ),
+      db.execute(
+        `SELECT l.id, l.action, l.target_type, l.target_title,
+                l.detail, l.created_at,
+                a.full_name AS admin_name
+         FROM activity_logs l
+         LEFT JOIN admins a ON l.admin_id = a.id
+         ORDER BY l.created_at DESC
+         LIMIT 15`
+      ),
+      db.execute(
+        `SELECT r.id, r.report_code, r.error_type, r.severity, r.status,
+                r.created_at,
+                a.title AS article_title, a.slug AS article_slug
+         FROM reports r
+         JOIN articles a ON r.article_id = a.id
+         WHERE r.status IN ('new','reviewing')
+         ORDER BY
+           CASE r.severity WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+           r.created_at DESC
+         LIMIT 8`
+      ),
+    ]);
+
+    res.json({
+      data: {
+        stats: stats[0][0],
+        recent_articles: recentArticles[0],
+        recent_logs: recentLogs[0],
+        open_reports: openReports[0],
+      },
+    });
   } catch (err) {
     next(err);
   }

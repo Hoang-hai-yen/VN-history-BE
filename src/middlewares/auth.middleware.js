@@ -1,5 +1,8 @@
 const jwt = require("jsonwebtoken");
 
+/**
+ * Xác thực JWT — gắn req.admin nếu hợp lệ
+ */
 function authenticate(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith("Bearer ")) {
@@ -15,6 +18,9 @@ function authenticate(req, res, next) {
   }
 }
 
+/**
+ * Chỉ super_admin
+ */
 function requireSuperAdmin(req, res, next) {
   if (req.admin?.role !== "super_admin") {
     return res.status(403).json({ message: "Chỉ super_admin mới có quyền thực hiện thao tác này." });
@@ -22,4 +28,14 @@ function requireSuperAdmin(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, requireSuperAdmin };
+/**
+ * Yêu cầu role admin hoặc super_admin
+ */
+function requireAdmin(req, res, next) {
+  if (!["admin", "super_admin"].includes(req.admin?.role)) {
+    return res.status(403).json({ message: "Yêu cầu quyền admin trở lên." });
+  }
+  next();
+}
+
+module.exports = { authenticate, requireSuperAdmin, requireAdmin };

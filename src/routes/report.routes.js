@@ -1,6 +1,6 @@
 const express = require("express");
 const ctrl = require("../controllers/report.controller");
-const { authenticate } = require("../middlewares/auth.middleware");
+const { authenticate, requireAdmin, requireSuperAdmin } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
@@ -85,7 +85,7 @@ router.get("/admin/reports", authenticate, ctrl.getAll);
  *       200:
  *         description: Đã phân công
  */
-router.patch("/admin/reports/:id/assign", authenticate, ctrl.assign);
+router.patch("/admin/reports/:id/assign", authenticate, requireAdmin, ctrl.assign);
 
 /**
  * @swagger
@@ -110,7 +110,7 @@ router.patch("/admin/reports/:id/assign", authenticate, ctrl.assign);
  *       200:
  *         description: Đã xử lý
  */
-router.patch("/admin/reports/:id/resolve", authenticate, ctrl.resolve);
+router.patch("/admin/reports/:id/resolve", authenticate, requireAdmin, ctrl.resolve);
 
 /**
  * @swagger
@@ -128,6 +128,31 @@ router.patch("/admin/reports/:id/resolve", authenticate, ctrl.resolve);
  *       200:
  *         description: Đã từ chối
  */
-router.patch("/admin/reports/:id/reject", authenticate, ctrl.reject);
+router.patch("/admin/reports/:id/reject", authenticate, requireAdmin, ctrl.reject);
+
+/**
+ * @swagger
+ * /admin/reports/{id}/flag:
+ *   patch:
+ *     tags: [Reports]
+ *     summary: Đánh cờ kiểm tra — cần academic review (UC-A5 BR2)
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               admin_note: { type: string, description: Ghi chú lý do cần kiểm tra }
+ *     responses:
+ *       200:
+ *         description: Đã đánh cờ
+ */
+router.patch("/admin/reports/:id/flag", authenticate, requireAdmin, ctrl.flag);
 
 module.exports = router;
