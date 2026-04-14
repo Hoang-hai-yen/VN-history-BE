@@ -443,4 +443,4 @@ async function dashboard(req, res, next) {
   }
 }
 
-module.exports = { getAll, getBySlug, getById, create, update, submit, publish, reject, remove, dashboard };
+module.exports = { getAll, getBySlug, getById, create, update, submit, publish, reject, remove, dashboard, returnToPending, bulkPublish };
