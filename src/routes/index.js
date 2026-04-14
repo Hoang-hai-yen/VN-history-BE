@@ -14,5 +14,6 @@ router.use("/admin/admins",       require("./admin.routes"));
 router.use("/admin/logs",         require("./log.routes"));
 router.use("/admin/settings",     require("./settings.routes"));
 router.use("/admin/permissions",  require("./permission.routes"));
+router.use("/admin/media",        require("./media.routes"));
 
 module.exports = router;
