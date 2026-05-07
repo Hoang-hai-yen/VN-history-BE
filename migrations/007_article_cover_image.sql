@@ -4,7 +4,7 @@
 -- ============================================================
 
 ALTER TABLE `articles`
-  ADD COLUMN IF NOT EXISTS `cover_image_url` TEXT DEFAULT NULL
+  ADD COLUMN `cover_image_url` TEXT DEFAULT NULL
     COMMENT 'URL ảnh bìa — dùng cho card list, sync từ media.is_cover'
     AFTER `quote`;
 

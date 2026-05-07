@@ -9,13 +9,13 @@
 -- SRS UC-A8 BR3: 3 trạng thái active / inactive / locked
 -- ------------------------------------------------------------
 ALTER TABLE `admins`
-  ADD COLUMN IF NOT EXISTS `account_status`
+  ADD COLUMN `account_status`
     enum('active','inactive','locked') NOT NULL DEFAULT 'active'
     COMMENT 'active=đang hoạt động | inactive=vô hiệu hoá | locked=bị khoá'
     AFTER `is_active`,
-  ADD COLUMN IF NOT EXISTS `failed_login_count` TINYINT UNSIGNED NOT NULL DEFAULT 0
+  ADD COLUMN `failed_login_count` TINYINT UNSIGNED NOT NULL DEFAULT 0
     AFTER `account_status`,
-  ADD COLUMN IF NOT EXISTS `locked_until` datetime DEFAULT NULL
+  ADD COLUMN `locked_until` datetime DEFAULT NULL
     COMMENT 'NULL = không bị khoá tạm thời' AFTER `failed_login_count`;
 
 -- Đồng bộ account_status với is_active hiện có
