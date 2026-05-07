@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `timeline_events` (
   `dynasty_id` char(36)  NOT NULL COMMENT 'Kỳ/triều đại trong timeline',
   `article_id` char(36)  NOT NULL COMMENT 'Bài viết sự kiện',
   `note`       text      DEFAULT NULL COMMENT 'Ghi chú riêng trong context timeline',
-  `sort_order` int(11)   NOT NULL DEFAULT 0,
+  `sort_order` INT       NOT NULL DEFAULT 0,
   `created_by` char(36)  NOT NULL,
   `created_at` datetime  NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime  NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

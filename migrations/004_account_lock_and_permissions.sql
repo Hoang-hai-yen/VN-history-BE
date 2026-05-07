@@ -13,7 +13,7 @@ ALTER TABLE `admins`
     enum('active','inactive','locked') NOT NULL DEFAULT 'active'
     COMMENT 'active=đang hoạt động | inactive=vô hiệu hoá | locked=bị khoá'
     AFTER `is_active`,
-  ADD COLUMN IF NOT EXISTS `failed_login_count` tinyint(3) UNSIGNED NOT NULL DEFAULT 0
+  ADD COLUMN IF NOT EXISTS `failed_login_count` TINYINT UNSIGNED NOT NULL DEFAULT 0
     AFTER `account_status`,
   ADD COLUMN IF NOT EXISTS `locked_until` datetime DEFAULT NULL
     COMMENT 'NULL = không bị khoá tạm thời' AFTER `failed_login_count`;
@@ -27,7 +27,7 @@ UPDATE `admins` SET account_status = 'inactive' WHERE is_active = 0;
 -- SRS UC-A9: admin permissions là configurable
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `role_permissions` (
-  `id`          int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `role`        enum('admin') NOT NULL DEFAULT 'admin'
     COMMENT 'Chỉ admin role mới cấu hình được; super_admin luôn full quyền',
   `permission`  varchar(100) NOT NULL COMMENT 'key từ danh sách cố định',

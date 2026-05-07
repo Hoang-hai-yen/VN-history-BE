@@ -53,6 +53,7 @@ async function getAll(req, res, next) {
     const [rows] = await db.query(
       `SELECT a.id, a.title, a.subtitle, a.slug, a.summary, a.type, a.status,
               a.year_start, a.year_end, a.year_display, a.is_featured, a.published_at,
+              a.cover_image_url,
               d.name AS dynasty_name, d.slug AS dynasty_slug,
               c.name AS category_name, c.slug AS category_slug
        FROM articles a
@@ -167,7 +168,7 @@ async function create(req, res, next) {
   try {
     const { title, subtitle, slug, summary, content, quote, type,
             year_start, year_end, year_display, dynasty_id, category_id,
-            is_featured, allow_comments } = req.body;
+            is_featured, allow_comments, cover_image_url } = req.body;
 
     if (!title || !slug || !summary || !content || !type) {
       return res.status(400).json({ message: "Thiếu trường bắt buộc: title, slug, summary, content, type." });
@@ -178,12 +179,13 @@ async function create(req, res, next) {
       `INSERT INTO articles
         (id, title, subtitle, slug, summary, content, quote, type,
          year_start, year_end, year_display, dynasty_id, category_id,
-         is_featured, allow_comments, status, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?)`,
+         is_featured, allow_comments, cover_image_url, status, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?)`,
       [id, title, subtitle || null, slug, summary, content, quote || null, type,
        year_start || null, year_end || null, year_display || null,
        dynasty_id || null, category_id || null,
        is_featured ? 1 : 0, allow_comments !== false ? 1 : 0,
+       cover_image_url || null,
        req.admin.id]
     );
 
@@ -214,7 +216,7 @@ async function update(req, res, next) {
 
     const allowed = ["title","subtitle","slug","summary","content","quote","type",
                      "year_start","year_end","year_display","dynasty_id","category_id",
-                     "is_featured","allow_comments"];
+                     "is_featured","allow_comments","cover_image_url"];
     const fields = allowed.filter((k) => req.body[k] !== undefined);
     if (!fields.length) return res.status(400).json({ message: "Không có trường nào để cập nhật." });
 
