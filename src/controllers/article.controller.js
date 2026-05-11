@@ -53,7 +53,7 @@ async function getAll(req, res, next) {
     const [rows] = await db.query(
       `SELECT a.id, a.title, a.subtitle, a.slug, a.summary, a.type, a.status,
               a.year_start, a.year_end, a.year_display, a.is_featured, a.published_at,
-              a.cover_image_url,
+              a.cover_image_url, a.created_at,
               d.name AS dynasty_name, d.slug AS dynasty_slug,
               c.name AS category_name, c.slug AS category_slug
        FROM articles a
@@ -206,12 +206,18 @@ async function update(req, res, next) {
     const [rows] = await db.execute("SELECT * FROM articles WHERE id = ?", [req.params.id]);
     const article = rows[0];
     if (!article) return res.status(404).json({ message: "Không tìm thấy bài viết." });
-    if (!["draft", "rejected"].includes(article.status)) {
-      return res.status(403).json({ message: "Chỉ được sửa bài ở trạng thái draft hoặc rejected." });
+    if (!["draft", "rejected", "published"].includes(article.status)) {
+      return res.status(403).json({ message: "Chỉ được sửa bài ở trạng thái draft, rejected hoặc published." });
     }
-    // SRS: Edit Any Post = super_admin only; admin chỉ sửa bài của mình (UC-A3 BR4)
-    if (req.admin.role === "admin" && article.created_by !== req.admin.id) {
-      return res.status(403).json({ message: "Admin chỉ có thể sửa bài viết do mình tạo." });
+    if (req.admin.role === "admin") {
+      const [[perm]] = await db.execute(
+        "SELECT granted FROM role_permissions WHERE role = 'admin' AND permission = 'article.edit_any'",
+        []
+      );
+      const hasEditAny = perm?.granted;
+      if (!hasEditAny && article.created_by !== req.admin.id) {
+        return res.status(403).json({ message: "Admin chỉ có thể sửa bài viết do mình tạo." });
+      }
     }
 
     const allowed = ["title","subtitle","slug","summary","content","quote","type",

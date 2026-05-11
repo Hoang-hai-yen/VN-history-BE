@@ -148,7 +148,11 @@ async function toggleActive(req, res, next) {
     if (!rows[0]) return res.status(404).json({ message: "Không tìm thấy admin." });
 
     const newState = rows[0].is_active ? 0 : 1;
-    await db.execute("UPDATE admins SET is_active = ?, updated_at = NOW() WHERE id = ?", [newState, req.params.id]);
+    const newAccountStatus = newState ? "active" : "inactive";
+    await db.execute(
+      "UPDATE admins SET is_active = ?, account_status = ?, updated_at = NOW() WHERE id = ?",
+      [newState, newAccountStatus, req.params.id]
+    );
 
     await logActivity(req.admin.id, newState ? "activate_admin" : "deactivate_admin",
       rows[0].id, rows[0].full_name, null, req.ip);

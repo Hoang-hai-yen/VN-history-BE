@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Danh sách permission key hợp lệ (cố định bởi hệ thống)
 const ALL_PERMISSIONS = [
-  { key: "article.create",      label: "Tạo / sửa bài viết của mình" },
+  { key: "article.create",      label: "Tạo bài viết của mình" },
   { key: "article.edit_own",    label: "Sửa bài viết của mình" },
   { key: "article.submit",      label: "Gửi bài chờ duyệt" },
   { key: "article.publish",     label: "Duyệt và xuất bản bài" },
