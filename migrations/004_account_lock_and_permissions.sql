@@ -11,16 +11,14 @@
 ALTER TABLE `admins`
   ADD COLUMN `account_status`
     enum('active','inactive','locked') NOT NULL DEFAULT 'active'
-    COMMENT 'active=đang hoạt động | inactive=vô hiệu hoá | locked=bị khoá'
-    AFTER `is_active`,
-  ADD COLUMN `failed_login_count` TINYINT UNSIGNED NOT NULL DEFAULT 0
-    AFTER `account_status`,
-  ADD COLUMN `locked_until` datetime DEFAULT NULL
-    COMMENT 'NULL = không bị khoá tạm thời' AFTER `failed_login_count`;
+    COMMENT 'active=đang hoạt động | inactive=vô hiệu hoá | locked=bị khoá';
 
--- Đồng bộ account_status với is_active hiện có
-UPDATE `admins` SET account_status = 'active'   WHERE is_active = 1;
-UPDATE `admins` SET account_status = 'inactive' WHERE is_active = 0;
+ALTER TABLE `admins`
+  ADD COLUMN `failed_login_count` TINYINT UNSIGNED NOT NULL DEFAULT 0;
+
+ALTER TABLE `admins`
+  ADD COLUMN `locked_until` datetime DEFAULT NULL
+    COMMENT 'NULL = không bị khoá tạm thời';
 
 -- ------------------------------------------------------------
 -- role_permissions: cho phép Super Admin cấu hình quyền động

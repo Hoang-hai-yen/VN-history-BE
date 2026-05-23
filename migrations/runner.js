@@ -54,6 +54,8 @@ function splitSql(content) {
 }
 
 async function run() {
+  const isLocal = (process.env.DB_HOST || "127.0.0.1") === "127.0.0.1";
+
   const conn = await mysql.createConnection({
     host: process.env.DB_HOST || "127.0.0.1",
     port: parseInt(process.env.DB_PORT || "3306"),
@@ -61,6 +63,7 @@ async function run() {
     password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "lsvn",
     charset: "utf8mb4",
+    ...(isLocal ? {} : { ssl: { rejectUnauthorized: true } }),
   });
 
   try {

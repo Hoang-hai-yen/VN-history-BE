@@ -156,8 +156,7 @@ CREATE TABLE IF NOT EXISTS `articles` (
   KEY `idx_articles_created_by`   (`created_by`, `status`),
   KEY `fk_articles_category`      (`category_id`),
   KEY `fk_articles_updated_by`    (`updated_by`),
-  KEY `fk_articles_pub_by`        (`published_by`),
-  FULLTEXT KEY `ft_articles_search` (`title`, `summary`, `content`)
+  KEY `fk_articles_pub_by`        (`published_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Bảng trung tâm. Metadata quyết định bài xuất hiện ở trang nào trên frontend.';
 
@@ -342,51 +341,7 @@ CREATE TABLE IF NOT EXISTS `activity_logs` (
   COMMENT='Append-only. Không UPDATE, không DELETE.';
 
 -- ------------------------------------------------------------
--- Triggers
--- ------------------------------------------------------------
-
-DROP TRIGGER IF EXISTS `trg_article_snapshot`;
-DELIMITER $$
-CREATE TRIGGER `trg_article_snapshot`
-AFTER UPDATE ON `articles`
-FOR EACH ROW
-BEGIN
-  IF OLD.content <> NEW.content
-  OR OLD.title   <> NEW.title
-  OR OLD.summary <> NEW.summary THEN
-    INSERT INTO article_revisions (id, article_id, admin_id, version, title, content, summary)
-    VALUES (UUID(), NEW.id, NEW.updated_by, 0, NEW.title, NEW.content, NEW.summary);
-  END IF;
-END$$
-DELIMITER ;
-
-DROP TRIGGER IF EXISTS `trg_revision_version`;
-DELIMITER $$
-CREATE TRIGGER `trg_revision_version`
-BEFORE INSERT ON `article_revisions`
-FOR EACH ROW
-BEGIN
-  DECLARE max_ver INT DEFAULT 0;
-  SELECT COALESCE(MAX(version), 0) INTO max_ver
-  FROM article_revisions WHERE article_id = NEW.article_id;
-  SET NEW.version = max_ver + 1;
-END$$
-DELIMITER ;
-
-DROP TRIGGER IF EXISTS `trg_report_code`;
-DELIMITER $$
-CREATE TRIGGER `trg_report_code`
-BEFORE INSERT ON `reports`
-FOR EACH ROW
-BEGIN
-  DECLARE next_num INT;
-  IF NEW.report_code IS NULL THEN
-    SELECT COUNT(*) + 1 INTO next_num FROM reports
-    WHERE YEAR(created_at) = YEAR(NOW());
-    SET NEW.report_code = CONCAT('BC-', YEAR(NOW()), '-', LPAD(next_num, 4, '0'));
-  END IF;
-END$$
-DELIMITER ;
+-- Triggers: skipped (not supported on TiDB Cloud Serverless)
 
 -- ------------------------------------------------------------
 -- Views
