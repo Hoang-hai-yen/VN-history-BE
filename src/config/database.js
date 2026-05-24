@@ -11,7 +11,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   charset: "utf8mb4",
-  ...(isLocal ? {} : { ssl: { rejectUnauthorized: true } }),
+  ...(isLocal ? {} : { ssl: { rejectUnauthorized: false } }),
 });
 
 module.exports = pool;

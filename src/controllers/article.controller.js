@@ -53,12 +53,14 @@ async function getAll(req, res, next) {
     const [rows] = await db.query(
       `SELECT a.id, a.title, a.subtitle, a.slug, a.summary, a.type, a.status,
               a.year_start, a.year_end, a.year_display, a.is_featured, a.published_at,
-              a.cover_image_url, a.created_at,
+              a.cover_image_url, a.created_at, a.rejection_note,
               d.name AS dynasty_name, d.slug AS dynasty_slug,
-              c.name AS category_name, c.slug AS category_slug
+              c.name AS category_name, c.slug AS category_slug,
+              adm.full_name AS created_by_name, a.created_by
        FROM articles a
-       LEFT JOIN dynasties  d ON a.dynasty_id  = d.id
-       LEFT JOIN categories c ON a.category_id = c.id
+       LEFT JOIN dynasties  d   ON a.dynasty_id  = d.id
+       LEFT JOIN categories c   ON a.category_id = c.id
+       LEFT JOIN admins     adm ON a.created_by  = adm.id
        ${where}
        ORDER BY a.year_start ASC
        LIMIT ? OFFSET ?`,
@@ -313,11 +315,11 @@ async function returnToPending(req, res, next) {
     if (!return_note) return res.status(400).json({ message: "Vui lòng nhập lý do trả lại (return_note)." });
 
     await db.execute(
-      "UPDATE articles SET rejection_note = ?, updated_by = ? WHERE id = ?",
+      "UPDATE articles SET status = 'draft', rejection_note = ?, updated_by = ? WHERE id = ?",
       [return_note, req.admin.id, article.id]
     );
     await logActivity(req.admin.id, "return_article", article.id, article.title, return_note, req.ip);
-    res.json({ message: "Đã trả bài về cho admin kèm ghi chú." });
+    res.json({ message: "Đã trả bài về draft kèm ghi chú." });
   } catch (err) {
     next(err);
   }
