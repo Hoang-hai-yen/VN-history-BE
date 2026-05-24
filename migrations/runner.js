@@ -61,6 +61,7 @@ async function run() {
     password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "lsvn",
     charset: "utf8mb4",
+    ssl: { rejectUnauthorized: false },
   });
 
   try {
