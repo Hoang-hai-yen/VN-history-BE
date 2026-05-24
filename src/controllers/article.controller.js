@@ -409,6 +409,7 @@ async function dashboard(req, res, next) {
       db.execute(
         `SELECT a.id, a.title, a.slug, a.type, a.status, a.year_display,
                 a.created_at, a.published_at,
+                a.rejection_note,
                 d.name AS dynasty_name,
                 adm.full_name AS created_by_name
          FROM articles a
