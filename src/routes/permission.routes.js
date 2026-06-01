@@ -46,6 +46,21 @@ const SUPER_ADMIN_PERMISSIONS = ALL_PERMISSIONS.map((p) => ({ ...p, granted: tru
  *                 current_role:
  *                   type: string
  */
+// Trả về danh sách permission keys được cấp cho user hiện tại
+router.get("/me", authenticate, async (req, res, next) => {
+  try {
+    if (req.admin.role === "super_admin") {
+      return res.json({ permissions: ALL_PERMISSIONS.map((p) => p.key) });
+    }
+    const [rows] = await db.execute(
+      "SELECT permission FROM role_permissions WHERE role = 'admin' AND granted = 1"
+    );
+    res.json({ permissions: rows.map((r) => r.permission) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/", authenticate, requireSuperAdmin, async (req, res, next) => {
   try {
     const [adminPerms] = await db.execute(

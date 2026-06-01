@@ -20,7 +20,7 @@ async function getPublic(req, res, next) {
          te.id, te.dynasty_id, te.note, te.sort_order,
          a.id          AS article_id,
          a.title, a.slug, a.type, a.year_start AS article_year,
-         a.year_display, a.summary, a.status,
+         a.year_display, a.summary, a.status, a.cover_image_url,
          c.name AS category_name
        FROM timeline_events te
        JOIN  articles   a ON te.article_id  = a.id
