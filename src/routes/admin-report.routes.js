@@ -119,4 +119,8 @@ router.patch("/:id/reject", authenticate, requireAdmin, ctrl.reject);
  */
 router.patch("/:id/flag", authenticate, requireAdmin, ctrl.flag);
 
+router.patch("/:id/save-note", authenticate, requireAdmin, ctrl.saveNote);
+
+router.patch("/:id/mark-fixed", authenticate, requireAdmin, ctrl.markFixed);
+
 module.exports = router;

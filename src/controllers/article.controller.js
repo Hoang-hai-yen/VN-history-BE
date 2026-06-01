@@ -24,7 +24,7 @@ async function logActivity(adminId, action, targetId, targetTitle, detail, ip) {
  */
 async function getAll(req, res, next) {
   try {
-    const { type, dynasty_id, category_id, is_featured, q, status, year_from, year_to } = req.query;
+    const { type, dynasty_id, category_id, is_featured, q, status, year_from, year_to, created_by } = req.query;
     const { page, limit, offset } = paginate(req.query.page, req.query.limit);
 
     // Public route chỉ cho phép xem published
@@ -37,6 +37,7 @@ async function getAll(req, res, next) {
     if (type)            { conditions.push("a.type = ?");   params.push(type); }
     if (dynasty_id)      { conditions.push("a.dynasty_id = ?"); params.push(dynasty_id); }
     if (category_id)     { conditions.push("a.category_id = ?"); params.push(category_id); }
+    if (created_by)      { conditions.push("a.created_by = ?"); params.push(created_by); }
     if (is_featured !== undefined) { conditions.push("a.is_featured = ?"); params.push(is_featured === "true" ? 1 : 0); }
     if (year_from)       { conditions.push("a.year_start >= ?"); params.push(parseInt(year_from)); }
     if (year_to)         { conditions.push("a.year_start <= ?"); params.push(parseInt(year_to)); }
@@ -218,7 +219,14 @@ async function update(req, res, next) {
       );
       const hasEditAny = perm?.granted;
       if (!hasEditAny && article.created_by !== req.admin.id) {
-        return res.status(403).json({ message: "Admin chỉ có thể sửa bài viết do mình tạo." });
+        // Kiểm tra xem admin có được giao báo cáo liên quan đến bài này không
+        const [assignedReports] = await db.execute(
+          "SELECT id FROM reports WHERE article_id = ? AND assigned_to = ? AND status IN ('reviewing','fixed') LIMIT 1",
+          [article.id, req.admin.id]
+        );
+        if (!assignedReports[0]) {
+          return res.status(403).json({ message: "Admin chỉ có thể sửa bài viết do mình tạo hoặc được giao xử lý báo cáo." });
+        }
       }
     }
 
