@@ -126,14 +126,11 @@ router.get("/", authenticate, requireSuperAdmin, async (req, res, next) => {
  */
 router.patch("/", authenticate, requireSuperAdmin, async (req, res, next) => {
   try {
-    const updates = req.body;
     const validKeys = new Set(ALL_PERMISSIONS.map((p) => p.key));
-
-    for (const [key, value] of Object.entries(updates)) {
-      if (!validKeys.has(key)) {
-        return res.status(400).json({ message: `Permission key không hợp lệ: ${key}` });
-      }
-    }
+    // Lọc bỏ các key không hợp lệ (vd: role, id...)
+    const updates = Object.fromEntries(
+      Object.entries(req.body).filter(([key]) => validKeys.has(key))
+    );
 
     // SRS UC-A9 BR2: admin phải giữ tối thiểu article.create và article.edit_own
     const REQUIRED_FOR_ADMIN = ["article.create", "article.edit_own"];

@@ -253,8 +253,8 @@ async function submit(req, res, next) {
     const [rows] = await db.execute("SELECT * FROM articles WHERE id = ?", [req.params.id]);
     const article = rows[0];
     if (!article) return res.status(404).json({ message: "Không tìm thấy bài viết." });
-    if (article.status !== "draft") {
-      return res.status(400).json({ message: "Chỉ bài viết draft mới có thể gửi duyệt." });
+    if (!["draft", "rejected"].includes(article.status)) {
+      return res.status(400).json({ message: "Chỉ bài viết draft hoặc bị từ chối mới có thể gửi duyệt." });
     }
     // admin chỉ submit bài của mình
     if (req.admin.role === "admin" && article.created_by !== req.admin.id) {
